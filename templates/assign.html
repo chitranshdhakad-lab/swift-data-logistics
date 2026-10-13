@@ -136,7 +136,7 @@
                 </thead>
                 <tbody>
                     {% for t in trips %}
-                        {% set pct = (100.0 * t.current_load_kg / t.capacity_kg)|round(1) if t.capacity_kg > 0 else 0 %}
+                        {% set pct = (t.current_load_kg * 100 / t.capacity_kg)|round(1) if t.capacity_kg > 0 else 0 %}
                         <tr>
                             <td><strong>#{{ t.trip_id }}</strong></td>
                             <td>

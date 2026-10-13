@@ -77,7 +77,7 @@ INSERT INTO Vehicle (vehicle_id, plate_no, type, capacity_kg, current_load_kg, h
 
 -- ---------------------------------------------------------------------
 -- 5. Insert Shipments (15 Shipments: TRK1001 to TRK1015)
--- Pricing: Standard = 80 + 25*kg (+50 fragile); Express = 150 + 40*kg (+50 fragile)
+-- Pricing: Standard = 80 + 25*kg (+50 fragile), Express = 150 + 40*kg (+50 fragile)
 -- ---------------------------------------------------------------------
 INSERT INTO Shipment (shipment_id, tracking_number, sender_id, receiver_id, source_hub_id, dest_hub_id, weight_kg, is_fragile, service_type, booking_date, expected_date, delivered_date, current_status, cost) VALUES
 (1, 'TRK1001', 1, 2, 1, 2, 4.00, FALSE, 'Standard', '2026-09-01 09:00:00', '2026-09-05', '2026-09-04 16:30:00', 'Delivered', 180.00),
