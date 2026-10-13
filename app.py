@@ -168,8 +168,29 @@ def assign():
             return redirect(url_for("assign"))
         conn = get_conn()
         try:
-            conn.cursor().callproc("sp_assign_shipment_to_trip", (trip_id, shipment_id))
-            conn.commit()
+            try:
+                conn.cursor().callproc("sp_assign_shipment_to_trip", (trip_id, shipment_id))
+                conn.commit()
+            except Error as proc_err:
+                # If stored procedure is not supported on cloud database (e.g. TiDB), run equivalent ACID steps
+                if getattr(proc_err, "errno", None) in (1305, 8108, 1064, 1105):
+                    cur = conn.cursor(dictionary=True)
+                    conn.start_transaction()
+                    cur.execute("SELECT vehicle_id, from_hub_id, status FROM Trip WHERE trip_id=%s", (trip_id,))
+                    t_row = cur.fetchone()
+                    cur.execute("SELECT weight_kg, current_status FROM Shipment WHERE shipment_id=%s", (shipment_id,))
+                    s_row = cur.fetchone()
+                    cur.execute("SELECT capacity_kg, current_load_kg FROM Vehicle WHERE vehicle_id=%s", (t_row["vehicle_id"],))
+                    v_row = cur.fetchone()
+                    if v_row["current_load_kg"] + s_row["weight_kg"] > v_row["capacity_kg"]:
+                        raise Error(msg="Vehicle capacity exceeded", errno=1644)
+                    cur.execute("INSERT INTO Trip_Shipment (trip_id, shipment_id, loaded_at) VALUES (%s, %s, NOW())", (trip_id, shipment_id))
+                    cur.execute("UPDATE Vehicle SET current_load_kg = current_load_kg + %s WHERE vehicle_id=%s", (s_row["weight_kg"], t_row["vehicle_id"]))
+                    cur.execute("INSERT INTO Tracking_Event (shipment_id, hub_id, status, remarks) VALUES (%s, %s, 'Departed Hub', %s)", (shipment_id, t_row["from_hub_id"], f"Loaded onto trip #{trip_id}"))
+                    cur.execute("UPDATE Shipment SET current_status='In Transit' WHERE shipment_id=%s", (shipment_id,))
+                    conn.commit()
+                else:
+                    raise proc_err
             flash("Shipment loaded onto the trip. The vehicle load and tracking history are updated.", "ok")
         except Error as err:
             conn.rollback()
@@ -256,6 +277,12 @@ def new_event():
                 cur = conn.cursor()
                 cur.execute("INSERT INTO Tracking_Event (shipment_id, hub_id, status, remarks) "
                             "VALUES (%s,%s,%s,%s)", (sid, hub, status, f.get("remarks") or None))
+                # Sync status in case database engine does not support triggers
+                new_status = 'In Transit' if status in ('Picked Up', 'Arrived at Hub', 'Departed Hub') else status
+                if status == 'Delivered':
+                    cur.execute("UPDATE Shipment SET current_status=%s, delivered_date=NOW() WHERE shipment_id=%s", (new_status, sid))
+                else:
+                    cur.execute("UPDATE Shipment SET current_status=%s WHERE shipment_id=%s", (new_status, sid))
                 conn.commit()
             except Error as err:
                 conn.rollback()

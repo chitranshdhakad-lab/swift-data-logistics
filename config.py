@@ -25,4 +25,8 @@ DB_CONFIG = {
     "database": os.environ.get("DB_NAME", "swift_data"),
 }
 
+# Automatically enable SSL for remote cloud databases (like TiDB Cloud)
+if DB_CONFIG["host"] not in ("127.0.0.1", "localhost") or os.environ.get("DB_SSL", "").lower() in ("true", "1"):
+    DB_CONFIG["ssl_disabled"] = False
+
 SECRET_KEY = os.environ.get("SECRET_KEY", "swift-data-dev-secret-key-2026")
