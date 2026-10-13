@@ -1,0 +1,165 @@
+{% extends "layout.html" %}
+
+{% block title %}Master Registries | Swift Data{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-titles">
+        <h1 class="page-title">Master Data Registry</h1>
+        <p class="page-subtitle">Add primary records (Customers, Drivers, Fleet Vehicles, Hubs) with strict constraints and regex validations</p>
+    </div>
+</div>
+
+<!-- Registry Counters Banner -->
+<div class="counters-grid">
+    <div class="counter-card">
+        <span class="counter-icon">👥</span>
+        <div class="counter-value">{{ counts.customers }}</div>
+        <div class="counter-label">Registered Customers</div>
+    </div>
+    <div class="counter-card">
+        <span class="counter-icon">🧑‍✈️</span>
+        <div class="counter-value">{{ counts.drivers }}</div>
+        <div class="counter-label">Active Drivers</div>
+    </div>
+    <div class="counter-card">
+        <span class="counter-icon">🚚</span>
+        <div class="counter-value">{{ counts.vehicles }}</div>
+        <div class="counter-label">Fleet Vehicles</div>
+    </div>
+    <div class="counter-card">
+        <span class="counter-icon">🏢</span>
+        <div class="counter-value">{{ counts.hubs }}</div>
+        <div class="counter-label">Operational Hubs</div>
+    </div>
+</div>
+
+<!-- Forms Grid -->
+<div class="registry-forms-grid">
+    <!-- Form 1: Add Customer -->
+    <div class="card form-box">
+        <h2 class="card-heading">➕ Add Customer</h2>
+        <form method="POST" action="{{ url_for('add_customer') }}" class="standard-form">
+            <div class="form-group">
+                <label for="c_name" class="form-label">Full Name <span class="required">*</span></label>
+                <input type="text" name="name" id="c_name" class="form-control" placeholder="e.g. Rahul Sharma" required>
+            </div>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="c_phone" class="form-label">Phone (7-15 digits) <span class="required">*</span></label>
+                    <input type="tel" name="phone" id="c_phone" class="form-control" placeholder="9826012345" required pattern="\d{7,15}">
+                </div>
+                <div class="form-group">
+                    <label for="c_email" class="form-label">Email (Optional)</label>
+                    <input type="email" name="email" id="c_email" class="form-control" placeholder="rahul@example.com">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="c_address" class="form-label">Street Address <span class="required">*</span></label>
+                <input type="text" name="address" id="c_address" class="form-control" placeholder="Flat 402, Lotus Court" required>
+            </div>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="c_city" class="form-label">City <span class="required">*</span></label>
+                    <input type="text" name="city" id="c_city" class="form-control" placeholder="Bhopal" required>
+                </div>
+                <div class="form-group">
+                    <label for="c_pincode" class="form-label">Pincode (6 digits) <span class="required">*</span></label>
+                    <input type="text" name="pincode" id="c_pincode" class="form-control" placeholder="462016" required pattern="\d{6}">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Save Customer Record</button>
+        </form>
+    </div>
+
+    <!-- Form 2: Add Driver -->
+    <div class="card form-box">
+        <h2 class="card-heading">➕ Add Driver</h2>
+        <form method="POST" action="{{ url_for('add_driver') }}" class="standard-form">
+            <div class="form-group">
+                <label for="d_name" class="form-label">Driver Name <span class="required">*</span></label>
+                <input type="text" name="name" id="d_name" class="form-control" placeholder="e.g. Vikram Yadav" required>
+            </div>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="d_phone" class="form-label">Phone <span class="required">*</span></label>
+                    <input type="tel" name="phone" id="d_phone" class="form-control" placeholder="9901122339" required pattern="\d{7,15}">
+                </div>
+                <div class="form-group">
+                    <label for="d_license" class="form-label">Driving License No <span class="required">*</span></label>
+                    <input type="text" name="license_no" id="d_license" class="form-control" placeholder="DL-0420210099" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="d_hub" class="form-label">Home Hub <span class="required">*</span></label>
+                <select name="hub_id" id="d_hub" class="form-select" required>
+                    <option value="" disabled selected>Assign home hub...</option>
+                    {% for h in hubs %}
+                        <option value="{{ h.hub_id }}">{{ h.name }} ({{ h.city }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-block">Register Driver</button>
+        </form>
+    </div>
+
+    <!-- Form 3: Add Vehicle -->
+    <div class="card form-box">
+        <h2 class="card-heading">➕ Add Vehicle</h2>
+        <form method="POST" action="{{ url_for('add_vehicle') }}" class="standard-form">
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="v_plate" class="form-label">Plate / Registration No <span class="required">*</span></label>
+                    <input type="text" name="plate_no" id="v_plate" class="form-control text-uppercase" placeholder="MP04-TR-4001" required>
+                </div>
+                <div class="form-group">
+                    <label for="v_type" class="form-label">Vehicle Type <span class="required">*</span></label>
+                    <select name="type" id="v_type" class="form-select" required>
+                        <option value="Bike">Bike (Light runner)</option>
+                        <option value="Van" selected>Van (Mid haul)</option>
+                        <option value="Truck">Truck (Interstate freight)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="v_capacity" class="form-label">Capacity (kg) <span class="required">*</span></label>
+                    <input type="number" step="1" min="1" name="capacity_kg" id="v_capacity" class="form-control" placeholder="800" required>
+                </div>
+                <div class="form-group">
+                    <label for="v_hub" class="form-label">Base Hub Station <span class="required">*</span></label>
+                    <select name="hub_id" id="v_hub" class="form-select" required>
+                        <option value="" disabled selected>Assign base hub...</option>
+                        {% for h in hubs %}
+                            <option value="{{ h.hub_id }}">{{ h.name }} ({{ h.city }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-block">Add Fleet Vehicle</button>
+        </form>
+    </div>
+
+    <!-- Form 4: Add Hub -->
+    <div class="card form-box">
+        <h2 class="card-heading">➕ Add Hub Station</h2>
+        <form method="POST" action="{{ url_for('add_hub') }}" class="standard-form">
+            <div class="form-group">
+                <label for="h_name" class="form-label">Hub Facility Name <span class="required">*</span></label>
+                <input type="text" name="name" id="h_name" class="form-control" placeholder="e.g. Pune Central Sorting Hub" required>
+            </div>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="h_city" class="form-label">Hub City <span class="required">*</span></label>
+                    <input type="text" name="city" id="h_city" class="form-control" placeholder="Pune" required>
+                </div>
+                <div class="form-group">
+                    <label for="h_capacity" class="form-label">Max Parcel Capacity <span class="required">*</span></label>
+                    <input type="number" min="1" step="1" name="capacity" id="h_capacity" class="form-control" placeholder="5000" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-block">Register New Hub</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

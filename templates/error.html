@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+
+{% block title %}System Notice | Swift Data{% endblock %}
+
+{% block content %}
+<div class="error-page-wrapper">
+    <div class="card error-display-card">
+        <div class="error-icon-box">⚠️</div>
+        <h1 class="error-title">Database Operation Notice</h1>
+        <div class="error-message-box">
+            {{ message }}
+        </div>
+
+        <div class="troubleshoot-guide">
+            <h3 class="guide-title">Troubleshooting & MySQL Connection Help:</h3>
+            <div class="guide-steps">
+                <div class="guide-step">
+                    <span class="step-num">1</span>
+                    <div>
+                        <strong>Ensure MySQL Service is Running</strong>
+                        <p>Verify that MySQL 8.0 is running on your machine (e.g., in Windows Services: <code>MySQL80</code>).</p>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <span class="step-num">2</span>
+                    <div>
+                        <strong>Set Your MySQL Password</strong>
+                        <p>Specify your password in <code>.env</code> file or set the environment variable in your terminal:</p>
+                        <pre class="code-snippet"># PowerShell:
+$env:DB_PASSWORD="your_mysql_password_here"
+
+# Or configure the .env file in the project root:
+DB_PASSWORD=your_mysql_password_here</pre>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <span class="step-num">3</span>
+                    <div>
+                        <strong>Initialize the Database</strong>
+                        <p>Run the automated setup utility to execute the schema and load sample records:</p>
+                        <pre class="code-snippet">python setup_db.py</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="error-actions">
+            <a href="{{ url_for('track') }}" class="btn btn-primary">Return to Tracker</a>
+            <button onclick="window.history.back()" class="btn btn-secondary">Go Back</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

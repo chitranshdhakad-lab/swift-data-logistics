@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Swift Data Logistics{% endblock %} | DBMS Project</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="app-header">
+        <div class="nav-container">
+            <a href="{{ url_for('track') }}" class="brand-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="brand-name">Swift<span class="accent-text">Data</span></span>
+                <span class="dbms-badge">MySQL 8.0</span>
+            </a>
+            <nav class="nav-links">
+                <a href="{{ url_for('track') }}" class="nav-link {% if request.endpoint == 'track' %}active{% endif %}">
+                    <span class="nav-icon">🔍</span> Track
+                </a>
+                <a href="{{ url_for('new_shipment') }}" class="nav-link {% if request.endpoint == 'new_shipment' %}active{% endif %}">
+                    <span class="nav-icon">📦</span> Book Parcel
+                </a>
+                <a href="{{ url_for('assign') }}" class="nav-link {% if request.endpoint == 'assign' %}active{% endif %}">
+                    <span class="nav-icon">🚛</span> Load Trips
+                </a>
+                <a href="{{ url_for('new_event') }}" class="nav-link {% if request.endpoint == 'new_event' %}active{% endif %}">
+                    <span class="nav-icon">📍</span> Log Event
+                </a>
+                <a href="{{ url_for('reports') }}" class="nav-link {% if request.endpoint == 'reports' %}active{% endif %}">
+                    <span class="nav-icon">📊</span> SQL Reports
+                </a>
+                <a href="{{ url_for('add_records') }}" class="nav-link {% if request.endpoint == 'add_records' %}active{% endif %}">
+                    <span class="nav-icon">➕</span> Master Records
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, msg in messages %}
+                        <div class="flash-alert flash-{{ category }}">
+                            <div class="alert-content">
+                                <span class="alert-symbol">{% if category == 'ok' %}✓{% else %}⚠️{% endif %}</span>
+                                <span>{{ msg }}</span>
+                            </div>
+                            <button class="alert-dismiss" onclick="this.parentElement.remove()">✕</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="app-footer">
+        <div class="footer-inner">
+            <div class="footer-info">
+                <strong>Swift Data Logistics DBMS</strong> · 3NF Relational Architecture · Stored Procedures · Triggers · ACID Transactions
+            </div>
+            <div class="footer-links">
+                <a href="{{ url_for('reports') }}">Analytical Queries</a> · 
+                <a href="{{ url_for('track') }}">Shipment Timeline</a> · 
+                <a href="{{ url_for('add_records') }}">Registry Counters</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

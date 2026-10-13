@@ -1,0 +1,71 @@
+{% extends "layout.html" %}
+
+{% block title %}Log Tracking Event | Swift Data{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-titles">
+        <h1 class="page-title">Log Tracking Milestone Event</h1>
+        <p class="page-subtitle">Demonstrates MySQL Trigger <code>trg_event_updates_shipment</code> keeping Shipment state automatically in sync</p>
+    </div>
+</div>
+
+<div class="card event-form-card">
+    <form method="POST" action="{{ url_for('new_event') }}" class="standard-form">
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="shipment_id" class="form-label">Target Shipment <span class="required">*</span></label>
+                <select name="shipment_id" id="shipment_id" class="form-select" required>
+                    <option value="" disabled selected>Select active parcel...</option>
+                    {% for s in shipments %}
+                        <option value="{{ s.shipment_id }}">
+                            {{ s.tracking_number }} — Current Status: [{{ s.current_status }}]
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="status" class="form-label">New Milestone Status <span class="required">*</span></label>
+                <select name="status" id="status" class="form-select" required>
+                    <option value="" disabled selected>Select status event...</option>
+                    {% for st in statuses %}
+                        <option value="{{ st }}">{{ st }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="hub_id" class="form-label">Current Hub Location (Optional for field delivery)</label>
+                <select name="hub_id" id="hub_id" class="form-select">
+                    <option value="">None / Field Transit / Doorstep</option>
+                    {% for h in hubs %}
+                        <option value="{{ h.hub_id }}">{{ h.name }} ({{ h.city }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="remarks" class="form-label">Checkpoint Remarks & Notes</label>
+                <input type="text" 
+                       name="remarks" 
+                       id="remarks" 
+                       class="form-control" 
+                       placeholder="e.g. Scanned at conveyor 3, Left with neighbor, Out with van...">
+            </div>
+        </div>
+
+        <div class="callout callout-warning">
+            <strong>Database Trigger Activated:</strong> An <code>AFTER INSERT</code> trigger on <code>Tracking_Event</code> automatically maps the milestone status into the parent <code>Shipment</code> row, sets <code>delivered_date = NOW()</code> on delivery, and locks further edits.
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-lg">
+                Log Event & Fire Database Trigger
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

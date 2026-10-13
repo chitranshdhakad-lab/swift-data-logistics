@@ -1,0 +1,171 @@
+{% extends "layout.html" %}
+
+{% block title %}Track Parcel | Swift Data{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-titles">
+        <h1 class="page-title">Live Shipment Tracker</h1>
+        <p class="page-subtitle">Inspect real-time parcel transit timeline, multihop routes, and event logs</p>
+    </div>
+</div>
+
+<!-- Search Bar Section -->
+<div class="search-card">
+    <form method="GET" action="{{ url_for('track') }}" class="search-form">
+        <div class="search-input-group">
+            <span class="search-icon">🔍</span>
+            <input type="text" 
+                   name="tracking_number" 
+                   value="{{ tn }}" 
+                   placeholder="Enter Tracking Number (e.g. TRK1002, TRK1009)..." 
+                   autocomplete="off" 
+                   required>
+        </div>
+        <button type="submit" class="btn btn-primary">Track Parcel</button>
+    </form>
+    
+    {% if recent %}
+        <div class="recent-quicklinks">
+            <span class="quick-label">Recent Shipments:</span>
+            <div class="chip-group">
+                {% for r in recent %}
+                    <a href="{{ url_for('track', tracking_number=r.tracking_number) }}" 
+                       class="chip {% if r.tracking_number == tn %}chip-active{% endif %}">
+                        {{ r.tracking_number }}
+                        <span class="chip-status status-dot-{{ r.current_status|lower|replace(' ', '-') }}"></span>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+{% if tn and not shipment %}
+    <div class="not-found-card">
+        <div class="empty-icon">📦</div>
+        <h3>No Shipment Found for "{{ tn }}"</h3>
+        <p>Please verify the tracking number or pick one from the quick links above.</p>
+    </div>
+{% endif %}
+
+{% if shipment %}
+    <!-- Active Shipment Details -->
+    <div class="shipment-overview-grid">
+        <div class="card shipment-main-card">
+            <div class="shipment-card-top">
+                <div class="tn-and-badge">
+                    <span class="tracking-title">{{ shipment.tracking_number }}</span>
+                    <span class="badge badge-status-{{ shipment.current_status|lower|replace(' ', '-') }}">
+                        {{ shipment.current_status }}
+                    </span>
+                    {% if late %}
+                        <span class="badge badge-danger">⚠️ Delayed (Past Expected Date)</span>
+                    {% endif %}
+                </div>
+                <div class="service-tier-badge">
+                    <span class="tier-pill tier-{{ shipment.service_type|lower }}">{{ shipment.service_type }} Service</span>
+                    {% if shipment.is_fragile %}
+                        <span class="tier-pill tier-fragile">🛡️ Fragile</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Route Visualization -->
+            <div class="route-banner">
+                <div class="route-node">
+                    <div class="route-hub">{{ shipment.from_city }}</div>
+                    <div class="route-desc">Origin City</div>
+                </div>
+                <div class="route-line-wrapper">
+                    <div class="route-line"></div>
+                    <span class="route-line-icon">✈️</span>
+                </div>
+                <div class="route-node">
+                    <div class="route-hub">{{ shipment.to_city }}</div>
+                    <div class="route-desc">Destination City</div>
+                </div>
+            </div>
+
+            <!-- Meta attributes grid -->
+            <div class="meta-grid">
+                <div class="meta-item">
+                    <span class="meta-label">Sender</span>
+                    <span class="meta-value">{{ shipment.sender }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Receiver</span>
+                    <span class="meta-value">{{ shipment.receiver }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Parcel Weight</span>
+                    <span class="meta-value">{{ shipment.weight_kg }} kg</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Shipping Cost</span>
+                    <span class="meta-value">₹{{ "%.2f"|format(shipment.cost) }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Booking Timestamp</span>
+                    <span class="meta-value">{{ shipment.booking_date.strftime('%d %b %Y, %I:%M %p') }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Promised Delivery</span>
+                    <span class="meta-value">{{ shipment.expected_date.strftime('%d %b %Y') }}</span>
+                </div>
+                {% if shipment.delivered_date %}
+                <div class="meta-item">
+                    <span class="meta-label">Delivered Timestamp</span>
+                    <span class="meta-value text-success">{{ shipment.delivered_date.strftime('%d %b %Y, %I:%M %p') }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Timeline Section -->
+        <div class="card timeline-card">
+            <h2 class="card-heading">Movement & Milestone History</h2>
+            {% if events %}
+                <div class="timeline-container">
+                    {% for ev in events %}
+                        <div class="timeline-item">
+                            <div class="timeline-dot dot-{{ ev.status|lower|replace(' ', '-') }}"></div>
+                            <div class="timeline-body">
+                                <div class="timeline-header">
+                                    <span class="timeline-status">{{ ev.status }}</span>
+                                    <span class="timeline-time">{{ ev.event_time.strftime('%d %b %Y, %I:%M %p') }}</span>
+                                </div>
+                                <div class="timeline-location">
+                                    <span class="hub-pill">📍 {{ ev.hub or 'In Transit / Field' }}</span>
+                                </div>
+                                {% if ev.remarks %}
+                                    <p class="timeline-remarks">{{ ev.remarks }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="empty-text">No tracking events recorded yet for this parcel.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+
+<!-- Database Summary Cards -->
+<div class="summary-section">
+    <h2 class="section-heading">Database Status Distribution</h2>
+    <div class="summary-grid">
+        {% for s in summary %}
+            <div class="summary-card">
+                <div class="summary-status-header">
+                    <span class="status-indicator dot-{{ s.current_status|lower|replace(' ', '-') }}"></span>
+                    <span class="summary-title">{{ s.current_status }}</span>
+                </div>
+                <div class="summary-count">{{ s.n }}</div>
+                <span class="summary-sub">Active Shipments</span>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

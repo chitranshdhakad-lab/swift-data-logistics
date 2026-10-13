@@ -1,0 +1,172 @@
+{% extends "layout.html" %}
+
+{% block title %}Load Trips & Dispatch | Swift Data{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-titles">
+        <h1 class="page-title">Trip Management & Cargo Loading</h1>
+        <p class="page-subtitle">Executes stored procedure <code>sp_assign_shipment_to_trip</code> with transactional capacity validation</p>
+    </div>
+</div>
+
+<div class="assign-grid-layout">
+    <!-- Form 1: Load Shipment onto Trip (Stored Procedure) -->
+    <div class="card action-panel">
+        <div class="panel-header">
+            <span class="panel-icon">⚙️</span>
+            <div>
+                <h2 class="panel-title">Load Parcel onto Trip</h2>
+                <p class="panel-subtitle">Stored Procedure + Transaction Execution</p>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('assign') }}" class="standard-form">
+            <div class="form-group">
+                <label for="trip_id" class="form-label">Select Active Route / Trip <span class="required">*</span></label>
+                <select name="trip_id" id="trip_id" class="form-select" required>
+                    <option value="" disabled selected>Select trip route...</option>
+                    {% for t in trips %}
+                        <option value="{{ t.trip_id }}">
+                            #{{ t.trip_id }} · {{ t.from_city }} ➔ {{ t.to_city }} ({{ t.driver }} · {{ t.plate_no }}: {{ t.current_load_kg }}/{{ t.capacity_kg }} kg)
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="shipment_id" class="form-label">Select Parcel to Load <span class="required">*</span></label>
+                <select name="shipment_id" id="shipment_id" class="form-select" required>
+                    <option value="" disabled selected>Select pending shipment...</option>
+                    {% for s in shipments %}
+                        <option value="{{ s.shipment_id }}">
+                            {{ s.tracking_number }} ({{ s.weight_kg }} kg · {{ s.from_city }} ➔ {{ s.to_city }}) [{{ s.current_status }}]
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="callout callout-info">
+                <strong>ACID Transaction Guarantee:</strong> If <code>current_load + parcel_weight &gt; capacity</code>, the stored procedure raises an exception and automatically runs <code>ROLLBACK</code>. No partial updates occur.
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+                ⚡ Call sp_assign_shipment_to_trip
+            </button>
+        </form>
+    </div>
+
+    <!-- Form 2: Plan New Trip -->
+    <div class="card action-panel">
+        <div class="panel-header">
+            <span class="panel-icon">🛣️</span>
+            <div>
+                <h2 class="panel-title">Plan New Route Trip</h2>
+                <p class="panel-subtitle">Assign Driver and Fleet Vehicle to Hub Corridor</p>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('new_trip') }}" class="standard-form">
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="driver_id" class="form-label">Assigned Driver <span class="required">*</span></label>
+                    <select name="driver_id" id="driver_id" class="form-select" required>
+                        <option value="" disabled selected>Select driver...</option>
+                        {% for d in drivers %}
+                            <option value="{{ d.driver_id }}">{{ d.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="vehicle_id" class="form-label">Assigned Vehicle <span class="required">*</span></label>
+                    <select name="vehicle_id" id="vehicle_id" class="form-select" required>
+                        <option value="" disabled selected>Select fleet vehicle...</option>
+                        {% for v in vehicles %}
+                            <option value="{{ v.vehicle_id }}">{{ v.plate_no }} ({{ v.type }} · {{ v.capacity_kg }} kg)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="from_hub_id" class="form-label">Departure Hub <span class="required">*</span></label>
+                    <select name="from_hub_id" id="from_hub_id" class="form-select" required>
+                        <option value="" disabled selected>Departure hub...</option>
+                        {% for h in hubs %}
+                            <option value="{{ h.hub_id }}">{{ h.name }} ({{ h.city }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="to_hub_id" class="form-label">Arrival Hub <span class="required">*</span></label>
+                    <select name="to_hub_id" id="to_hub_id" class="form-select" required>
+                        <option value="" disabled selected>Arrival hub...</option>
+                        {% for h in hubs %}
+                            <option value="{{ h.hub_id }}">{{ h.name }} ({{ h.city }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-secondary btn-block">
+                Dispatch / Plan Trip
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Active Trips Table -->
+<div class="card table-card-full">
+    <h2 class="card-heading">Active Dispatched Trips & Vehicle Capacities</h2>
+    {% if trips %}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Trip #</th>
+                        <th>Corridor Route</th>
+                        <th>Driver</th>
+                        <th>Vehicle & Type</th>
+                        <th>Capacity Utilization</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in trips %}
+                        {% set pct = (100.0 * t.current_load_kg / t.capacity_kg)|round(1) if t.capacity_kg > 0 else 0 %}
+                        <tr>
+                            <td><strong>#{{ t.trip_id }}</strong></td>
+                            <td>
+                                <span class="route-badge">{{ t.from_city }} ➔ {{ t.to_city }}</span>
+                            </td>
+                            <td>{{ t.driver }}</td>
+                            <td>
+                                <div>{{ t.plate_no }}</div>
+                                <span class="sub-label">{{ t.type }}</span>
+                            </td>
+                            <td class="capacity-cell">
+                                <div class="load-text">
+                                    <span>{{ t.current_load_kg }} / {{ t.capacity_kg }} kg</span>
+                                    <span class="pct-text">{{ pct }}%</span>
+                                </div>
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill {% if pct > 85 %}fill-danger{% elif pct > 50 %}fill-warning{% else %}fill-primary{% endif %}" 
+                                         style="width: {{ [pct, 100]|min }}%;"></div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge badge-status-{{ t.status|lower }}">{{ t.status }}</span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="empty-text">No active trips currently planned or ongoing.</p>
+    {% endif %}
+</div>
+{% endblock %}

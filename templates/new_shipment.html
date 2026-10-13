@@ -1,0 +1,164 @@
+{% extends "layout.html" %}
+
+{% block title %}Book New Shipment | Swift Data{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-titles">
+        <h1 class="page-title">Book New Shipment</h1>
+        <p class="page-subtitle">Creates a new parcel transaction with automated tracking ID generation and ACID rollback</p>
+    </div>
+</div>
+
+<div class="booking-layout">
+    <div class="card booking-form-card">
+        <form method="POST" action="{{ url_for('new_shipment') }}" id="shipmentForm" class="standard-form">
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="sender_id" class="form-label">Sender Customer <span class="required">*</span></label>
+                    <select name="sender_id" id="sender_id" class="form-select" required>
+                        <option value="" disabled selected>Select registered sender...</option>
+                        {% for c in customers %}
+                            <option value="{{ c.customer_id }}">{{ c.name }} ({{ c.city }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="receiver_id" class="form-label">Receiver Customer <span class="required">*</span></label>
+                    <select name="receiver_id" id="receiver_id" class="form-select" required>
+                        <option value="" disabled selected>Select registered receiver...</option>
+                        {% for c in customers %}
+                            <option value="{{ c.customer_id }}">{{ c.name }} ({{ c.city }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="source_hub_id" class="form-label">Origin / Pick-up Hub <span class="required">*</span></label>
+                    <select name="source_hub_id" id="source_hub_id" class="form-select" required>
+                        <option value="" disabled selected>Select origin hub...</option>
+                        {% for h in hubs %}
+                            <option value="{{ h.hub_id }}">{{ h.name }} ({{ h.city }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="dest_hub_id" class="form-label">Destination Hub <span class="required">*</span></label>
+                    <select name="dest_hub_id" id="dest_hub_id" class="form-select" required>
+                        <option value="" disabled selected>Select destination hub...</option>
+                        {% for h in hubs %}
+                            <option value="{{ h.hub_id }}">{{ h.name }} ({{ h.city }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row form-row-3">
+                <div class="form-group">
+                    <label for="weight_kg" class="form-label">Package Weight (kg) <span class="required">*</span></label>
+                    <input type="number" 
+                           step="0.05" 
+                           min="0.1" 
+                           max="1000" 
+                           name="weight_kg" 
+                           id="weight_kg" 
+                           class="form-control" 
+                           placeholder="e.g. 5.5" 
+                           required>
+                </div>
+
+                <div class="form-group">
+                    <label for="service_type" class="form-label">Service Tier <span class="required">*</span></label>
+                    <select name="service_type" id="service_type" class="form-select" required>
+                        <option value="Standard" selected>Standard (₹80 base + ₹25/kg · ~4 days)</option>
+                        <option value="Express">Express (₹150 base + ₹40/kg · ~2 days)</option>
+                    </select>
+                </div>
+
+                <div class="form-group checkbox-group-wrap">
+                    <label class="checkbox-container">
+                        <input type="checkbox" name="is_fragile" id="is_fragile" value="1">
+                        <span class="custom-checkbox"></span>
+                        <span class="checkbox-text">Fragile Goods (+₹50 protective handling)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    Confirm & Book Parcel Transaction
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Live Cost Estimation Preview Sidebar -->
+    <div class="card price-summary-card">
+        <h3 class="card-heading">Cost & Delivery Preview</h3>
+        <div class="price-breakdown">
+            <div class="calc-row">
+                <span>Base Charge</span>
+                <span id="previewBase">₹80.00</span>
+            </div>
+            <div class="calc-row">
+                <span>Weight Fee</span>
+                <span id="previewWeight">₹0.00</span>
+            </div>
+            <div class="calc-row">
+                <span>Fragile Packaging</span>
+                <span id="previewFragile">₹0.00</span>
+            </div>
+            <div class="calc-row total-row">
+                <span>Estimated Cost</span>
+                <span id="previewTotal" class="total-price">₹80.00</span>
+            </div>
+            <div class="calc-row days-row">
+                <span>Estimated Transit</span>
+                <span id="previewDays" class="text-accent">~4 business days</span>
+            </div>
+        </div>
+
+        <div class="dbms-rule-box">
+            <div class="rule-title">🛡️ Enforced DBMS Rules</div>
+            <ul class="rule-list">
+                <li><code>sender_id &lt;&gt; receiver_id</code> (CHECK)</li>
+                <li><code>source_hub &lt;&gt; dest_hub</code> (Routing rule)</li>
+                <li><code>weight_kg &gt; 0</code> and <code>cost &gt;= 0</code> (CHECK)</li>
+                <li>Transaction guarantees both <code>Shipment</code> and initial <code>Tracking_Event</code> are inserted together.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    const rates = {
+        "Standard": { base: 80, perKg: 25, days: 4 },
+        "Express": { base: 150, perKg: 40, days: 2 }
+    };
+
+    function updatePrice() {
+        const weight = parseFloat(document.getElementById('weight_kg').value) || 0;
+        const service = document.getElementById('service_type').value;
+        const fragile = document.getElementById('is_fragile').checked;
+
+        const rate = rates[service] || rates["Standard"];
+        const weightFee = weight * rate.perKg;
+        const fragileFee = fragile ? 50 : 0;
+        const total = rate.base + weightFee + fragileFee;
+
+        document.getElementById('previewBase').textContent = '₹' + rate.base.toFixed(2);
+        document.getElementById('previewWeight').textContent = '₹' + weightFee.toFixed(2);
+        document.getElementById('previewFragile').textContent = '₹' + fragileFee.toFixed(2);
+        document.getElementById('previewTotal').textContent = '₹' + total.toFixed(2);
+        document.getElementById('previewDays').textContent = '~' + rate.days + ' business days';
+    }
+
+    document.getElementById('weight_kg').addEventListener('input', updatePrice);
+    document.getElementById('service_type').addEventListener('change', updatePrice);
+    document.getElementById('is_fragile').addEventListener('change', updatePrice);
+</script>
+{% endblock %}
